@@ -4,7 +4,7 @@
 
 Building a PyTorch wheel on the Jetson Nano takes forever, while setting up a cross-compilation build system is prone to many failures. Moreover the official wheels (right now) are built only for specific python versions (e.g. python3.6). This creates a bottle neck of workarounds beginning with simple python environment management and ending with overly complicated containers deployed on the Jetson Nano.
 
-As such the target, here is to create a simple and manageable to create an natively deploy PyTorch for the python version required.
+As such, the target here is to create a simple and manageable to create an natively deploy PyTorch for the python version required.
 
 The approach taken here is to use a docker container for the desired target Jetson Nano OS running via QEMU that builds the actual package wheel on the host system. Thereby, avoiding cross-compilation package management.
 
@@ -32,12 +32,12 @@ Checkout the References section for more information.
 
 To run the build input the following command:
   ```
-
+  docker build --platform linux/arm/v8 --rm -t jetson-pythorch-build .
   ```
 
 ## License
 
-BSD 3-Clause License - see LICENSE file included in the repository.
+BSD 3-Clause License
 
 ## References
 1. [qemu-user-static](https://github.com/multiarch/qemu-user-static)
