@@ -32,7 +32,7 @@ Checkout the References section for more information.
 
 ## Usage
 
-To run the build input the following command:
+To run the build, input the following command:
   ```
   docker build --platform linux/arm/v8 --rm -t jetson-pythorch-build .
   ```
