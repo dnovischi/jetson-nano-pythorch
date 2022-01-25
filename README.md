@@ -25,7 +25,6 @@ The approach taken here is to use a docker container for the desired target Jets
 
   ```
   sudo docker run --platform linux/arm64/v8 --rm -t arm64v8/ubuntu uname -m
-  # aarch64
   ```
 the output should be `# aarch64`.
 
