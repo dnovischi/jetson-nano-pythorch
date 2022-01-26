@@ -153,22 +153,29 @@ RUN cd /pytorch \
     && pip3 install -r requirements.txt \
     && python3 setup.py bdist_wheel \
     && cd ..
+# Install the PyTorch wheel
+RUN cd /pytorch/dist/ \
+    && pip3 install `ls`
+
 # Torchvision Build
 WORKDIR /vision
 RUN cd /vision \
     && python3 -m pip install setuptools==59.5.0 \
     && python3 setup.py bdist_wheel \
     && cd ..
-# Torchaudio Build
-WORKDIR /audio
-RUN cd /audio \
-    && python3 -m pip install setuptools==59.5.0 \
-    && python3 setup.py bdist_wheel \
-    && cd ..
+
+# # Torchaudio Build
+# WORKDIR /audio
+# RUN cd /audio \
+#     && python3 -m pip install setuptools==59.5.0 \
+#     && python3 setup.py bdist_wheel \
+#     && cd ..
+
 # # ##################################################################################
 # # Prepare Artifact
 # # ##################################################################################
 FROM scratch as artifact
 COPY --from=build /pytorch/dist/* /
-COPY --from=build /vision/dist/* /
-COPY --from=build /audio/dist/* /
+# COPY --from=build /vision/dist/* /
+
+# COPY --from=build /audio/dist/* /
