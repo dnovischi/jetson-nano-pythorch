@@ -32,8 +32,9 @@ RUN echo "$DPKG_STATUS" >> /var/lib/dpkg/status \
     && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends ca-certificates software-properties-common curl gnupg2 apt-utils \
     ninja-build git cmake libjpeg-dev libopenmpi-dev libomp-dev ccache\
-    libopenblas-dev libblas-dev libeigen3-dev python3-pip\
-    && echo "[Builder] Installing CUDA Repository" \
+    libopenblas-dev libblas-dev libeigen3-dev python3-pip
+
+RUN echo "[Builder] Installing CUDA Repository" \
     && curl https://repo.download.nvidia.com/jetson/jetson-ota-public.asc > /etc/apt/trusted.gpg.d/jetson-ota-public.asc \
     && echo "deb https://repo.download.nvidia.com/jetson/common ${V_L4T} main" > /etc/apt/sources.list.d/nvidia-l4t-apt-source.list \
     && echo "deb https://repo.download.nvidia.com/jetson/${V_SOC} ${V_L4T} main" >> /etc/apt/sources.list.d/nvidia-l4t-apt-source.list \
@@ -46,6 +47,7 @@ RUN echo "$DPKG_STATUS" >> /var/lib/dpkg/status \
     cuda-minimal-build-${V_CUDA_DASH} \
     cuda-license-${V_CUDA_DASH} \
     cuda-command-line-tools-${V_CUDA_DASH} \
+    nvidia-cudnn* \
     libnvvpi1 vpi1-dev \
     && ln -s /usr/local/cuda-${V_CUDA} /usr/local/cuda \
     && rm -rf /var/lib/apt/lists/*
