@@ -1,8 +1,13 @@
 # ##################################################################################
-# Setup Nvidia CUDA for Jetson
+# Setup Nvidia CUDA for Jetson Nano
 # ##################################################################################
-FROM arm64v8/ubuntu:18.04 as cuda-devel
-# # Configuration Arguments
+ARG V_OS_MAJOR=20
+ARG V_OS_MINOR=04
+ARG V_OS=${V_OS_MAJOR}.${V_OS_MINOR}
+FROM arm64v8/ubuntu:20.04 as jetson-cuda
+# Configuration Arguments
+ARG TIMEZONE=Europe/Bucharest
+ARG V_SOC=t210
 ARG V_CUDA_MAJOR=10
 ARG V_CUDA_MINOR=2
 ARG V_L4T_MAJOR=32
@@ -17,18 +22,22 @@ ENV CUDA=${V_CUDA_MAJOR}.${V_CUDA_MINOR}
 ENV DEBIAN_FRONTEND=noninteractive
 # Fix CUDA info
 ARG DPKG_STATUS
+# Set timezone
+ENV TZ=${TIMEZONE}
+RUN ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime && echo ${TZ} > /etc/timezone
 # Add NVIDIA repo/public key and install VPI libraries
 RUN echo "$DPKG_STATUS" >> /var/lib/dpkg/status \
     && echo "[Builder] Installing Prerequisites" \
     && apt-get update \
     && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends ca-certificates software-properties-common curl gnupg2 apt-utils \
-    ninja-build git cmake libjpeg-dev libopenmpi-dev libomp-dev ccache \
-    libopenblas-dev libblas-dev libeigen3-dev python3-pip\
-    && echo "[Builder] Installing CUDA Repository" \
+    ninja-build git cmake libjpeg-dev libopenmpi-dev libomp-dev ccache\
+    libopenblas-dev libblas-dev libeigen3-dev python3-pip
+
+RUN echo "[Builder] Installing CUDA Repository" \
     && curl https://repo.download.nvidia.com/jetson/jetson-ota-public.asc > /etc/apt/trusted.gpg.d/jetson-ota-public.asc \
     && echo "deb https://repo.download.nvidia.com/jetson/common ${V_L4T} main" > /etc/apt/sources.list.d/nvidia-l4t-apt-source.list \
-    && echo "deb https://repo.download.nvidia.com/jetson/t210 ${V_L4T} main" >> /etc/apt/sources.list.d/nvidia-l4t-apt-source.list \
+    && echo "deb https://repo.download.nvidia.com/jetson/${V_SOC} ${V_L4T} main" >> /etc/apt/sources.list.d/nvidia-l4t-apt-source.list \
     && echo "[Builder] Installing CUDA System" \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -38,25 +47,25 @@ RUN echo "$DPKG_STATUS" >> /var/lib/dpkg/status \
     cuda-minimal-build-${V_CUDA_DASH} \
     cuda-license-${V_CUDA_DASH} \
     cuda-command-line-tools-${V_CUDA_DASH} \
+    nvidia-cudnn* \
     libnvvpi1 vpi1-dev \
     && ln -s /usr/local/cuda-${V_CUDA} /usr/local/cuda \
     && rm -rf /var/lib/apt/lists/*
-# Update environment
-ENV LIBRARY_PATH=/usr/local/cuda/lib64/stubs
-RUN ln -fs /usr/share/zoneinfo/Europe/Bucharest /etc/localtime
 # ##################################################################################
-# Create PyTorch Docker Layer
+# Create PyTorch Download Layer
 # We do this seperately since else we need to keep rebuilding
 # ##################################################################################
-# FROM --platform=$BUILDPLATFORM ubuntu:18.04 as downloader-pytorch
-FROM arm64v8/ubuntu:18.04 as downloader-pytorch
+FROM arm64v8/ubuntu:20.04 as download
+# Set timezone
+ENV TZ=Europe/Bucharest
+RUN ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime && echo ${TZ} > /etc/timezone
 # Configuration Arguments
 # https://github.com/pytorch/pytorch
 ARG V_PYTORCH=v1.10.0
 # https://github.com/pytorch/vision
-ARG V_PYTORCHVISION=v0.11.1
+ARG V_TORCHVISION=v0.11.1
 # https://github.com/pytorch/audio
-ARG V_PYTORCHAUDIO=v0.10.0
+ARG V_TORCHAUDIO=v0.10.0
 # Install Git Tools
 RUN apt-get update \
     && apt-get install -y --no-install-recommends software-properties-common apt-utils git \
@@ -66,32 +75,48 @@ RUN apt-get update \
 ENV DEBIAN_FRONTEND=noninteractive
 # Clone Source
 RUN git clone --recursive --branch ${V_PYTORCH} http://github.com/pytorch/pytorch
+RUN git clone --recursive --branch ${V_TORCHVISION} https://github.com/pytorch/vision.git
+RUN git clone --recursive --branch ${V_TORCHAUDIO} https://github.com/pytorch/audio.git
 # ##################################################################################
 # Build PyTorch for Jetson (with CUDA)
 # ##################################################################################
-FROM cuda-devel as builder
+FROM jetson-cuda as build
 # Configuration Arguments
 ARG V_PYTHON_MAJOR=3
-ARG V_PYTHON_MINOR=9
+ARG V_PYTHON_MINOR=8
+ENV V_CLANG=8
 ENV V_PYTHON=${V_PYTHON_MAJOR}.${V_PYTHON_MINOR}
 # Accept default answers for everything
 ENV DEBIAN_FRONTEND=noninteractive
 # Download Common Software
 RUN apt-get update \
-    && apt-get install -y clang build-essential bash ca-certificates git wget cmake curl software-properties-common ffmpeg libsm6 libxext6 libffi-dev libssl-dev xz-utils zlib1g-dev liblzma-dev
-# Setting up Python 3.9
+    && apt-get install -y clang clang-${V_CLANG} build-essential bash ca-certificates git wget cmake curl software-properties-common ffmpeg libsm6 libxext6 libffi-dev libssl-dev xz-utils zlib1g-dev liblzma-dev \
+    && update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${V_CLANG} 100 \
+    && update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${V_CLANG} 100 \
+    && update-alternatives --set clang /usr/bin/clang-${V_CLANG} \
+    && update-alternatives --set clang++ /usr/bin/clang++-${V_CLANG}
+
+# Setting up Python
 WORKDIR /install
-RUN add-apt-repository ppa:deadsnakes/ppa \
+RUN if [ "$V_PYTHON" != "3.6" ] && [ "$V_PYTHON" != "3.8" ]; then \
+    add-apt-repository ppa:deadsnakes/ppa \
     && apt-get update \
     && apt-get install -y python${V_PYTHON} python${V_PYTHON}-dev python${V_PYTHON}-venv python${V_PYTHON_MAJOR}-tk \
     && rm /usr/bin/python \
     && rm /usr/bin/python${V_PYTHON_MAJOR} \
     && ln -s $(which python${V_PYTHON}) /usr/bin/python \
     && ln -s $(which python${V_PYTHON}) /usr/bin/python${V_PYTHON_MAJOR} \
-    && curl --silent --show-error https://bootstrap.pypa.io/get-pip.py | python
-# PyTorch - Build - Source Code Setup
-# copy everything from the downloader-pytorch layer /torch to /torch on this one
-COPY --from=downloader-pytorch /pytorch /pytorch
+    && curl --silent --show-error https://bootstrap.pypa.io/get-pip.py | python; \
+    else \
+    apt-get update \
+    && apt-get install -y python${V_PYTHON} python${V_PYTHON}-dev python${V_PYTHON}-venv python${V_PYTHON_MAJOR}-tk; \
+    fi
+
+# PyTorch - Build - Source Code Setup (copy repos from download to build)
+COPY --from=download /pytorch /pytorch
+COPY --from=download /vision /vision
+COPY --from=download /audio /audio
+
 WORKDIR /pytorch
 # PyTorch - Build - Prerequisites
 # Set clang as compiler
@@ -118,16 +143,45 @@ ARG USE_NCCL=0
 ARG USE_SYSTEM_NCCL=0
 ARG USE_OPENCV=0
 ARG USE_DISTRIBUTED=0
-# Build
+# PyTorch Build
 RUN cd /pytorch \
-    && rm build/CMakeCache.txt || : \
+    && rm -rf build/CMakeCache.txt || : \
     && sed -i -e "/^if(DEFINED GLIBCXX_USE_CXX11_ABI)/i set(GLIBCXX_USE_CXX11_ABI 1)" CMakeLists.txt \
+    && pip3 install wheel mock pillow \
+    && pip3 install scikit-build \
     && python3 -m pip install setuptools==59.5.0 \
-    && pip install -r requirements.txt \
-    && python setup.py bdist_wheel \
+    && pip3 install -r requirements.txt \
+    && python3 setup.py bdist_wheel \
     && cd ..
-# ##################################################################################
-# Prepare Artifact
-# ##################################################################################
+
+# Install the PyTorch wheel
+RUN apt-get install -y libswresample-dev libswscale-dev libavformat-dev libavcodec-dev libavutil-dev \
+    && cd /pytorch/dist/ \
+    && pip3 install `ls` \
+    && cd .. \
+    && cd ..
+
+# Torchvision Build
+WORKDIR ../vision
+RUN cd /vision \
+    && python3 setup.py clean \
+    && python3 setup.py bdist_wheel \
+    && mkdir -p output \
+    && cp dist/*.whl output/ \
+    && cd ..
+
+# # Torchaudio Build
+# WORKDIR /audio
+# RUN cd /audio \
+#     && python3 -m pip install setuptools==59.5.0 \
+#     && python3 setup.py bdist_wheel \
+#     && cd ..
+
+# # ##################################################################################
+# # Prepare Artifact
+# # ##################################################################################
 FROM scratch as artifact
-COPY --from=builder /pytorch/dist/* /
+COPY --from=build /pytorch/dist/* /
+# COPY --from=build /vision/dist/* /
+
+# COPY --from=build /audio/dist/* /

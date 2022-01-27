@@ -8,32 +8,37 @@ As such, the target here is to create a simple and manageable build environment 
 
 The approach taken here is to use a docker container for the desired target Jetson Nano OS running via QEMU that builds the actual package wheel on the host system. Thereby, avoiding cross-compilation package management.
 
-## Setup
+## Prerequisites
 
-1. Assuming Docker is already installed on your system first install QEMU packages:
+1. Install docker by following [this](https://docs.docker.com/engine/install/ubuntu/) guide.
+
+2. Install QEMU packages:
 
   ```
   sudo apt-get install qemu binfmt-support qemu-user-static
   ```
-2. Execute the registering scripts:
+3. Execute the registering scripts:
   ```
   docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
   ```
-3. Test the QEMU emulation environment
+4. Test the QEMU emulation environment
 
   ```
   sudo docker run --platform linux/arm64/v8 --rm -t arm64v8/ubuntu uname -m
-  # aarch64
   ```
+the output should be `# aarch64`.
 
 Checkout the References section for more information.
 
-## Running
+## Usage
 
-To run the build input the following command:
+To run the build, input the following command:
   ```
-  docker build --platform linux/arm/v8 --rm -t jetson-pythorch-build .
+  docker buildx build --platform linux/arm/v8 --rm -t jetson-pythorch-build -o wheels .
   ```
+TODO: Add arguments
+
+
 
 ## License
 
