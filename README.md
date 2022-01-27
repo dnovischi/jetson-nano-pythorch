@@ -36,10 +36,6 @@ To run the build, input the following command:
   ```
   docker buildx build --platform linux/arm/v8 --rm -t jetson-pythorch-build -o wheels .
   ```
-TODO: Add arguments
-
-
-
 ## License
 
 BSD 3-Clause License
