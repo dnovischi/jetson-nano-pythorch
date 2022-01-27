@@ -4,7 +4,7 @@
 
 Building a PyTorch wheel on the Jetson Nano takes forever, while setting up a cross-compilation build system is prone to many failures. Moreover the official wheels (right now) are built only for specific python versions (e.g. python3.6). This creates a bottleneck of workarounds, beginning with simple python environment management and ending with overly complicated containers deployed on the Jetson Nano.
 
-As such, the target here is to create a simple and manageable build environment to compile and natively deploy PyTorch for the python version of choice.
+As such, the target is to create a simple and manageable build environment to compile and natively deploy PyTorch for the python version of choice.
 
 The approach taken here is to use a docker container for the desired target Jetson Nano OS running via QEMU that builds the actual package wheel on the host system. Thereby, avoiding cross-compilation package management.
 
