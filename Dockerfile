@@ -153,15 +153,21 @@ RUN cd /pytorch \
     && pip3 install -r requirements.txt \
     && python3 setup.py bdist_wheel \
     && cd ..
+
 # Install the PyTorch wheel
-RUN cd /pytorch/dist/ \
-    && pip3 install `ls`
+RUN apt-get install -y libswresample-dev libswscale-dev libavformat-dev libavcodec-dev libavutil-dev \
+    && cd /pytorch/dist/ \
+    && pip3 install `ls` \
+    && cd .. \
+    && cd ..
 
 # Torchvision Build
-WORKDIR /vision
+WORKDIR ../vision
 RUN cd /vision \
-    && python3 -m pip install setuptools==59.5.0 \
+    && python3 setup.py clean \
     && python3 setup.py bdist_wheel \
+    && mkdir -p output \
+    && cp dist/*.whl output/ \
     && cd ..
 
 # # Torchaudio Build
