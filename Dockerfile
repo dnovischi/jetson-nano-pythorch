@@ -177,8 +177,8 @@ RUN cd /pytorch \
     && sed -i -e "/^if(DEFINED GLIBCXX_USE_CXX11_ABI)/i set(GLIBCXX_USE_CXX11_ABI 1)" CMakeLists.txt \
     && pip3 install wheel mock pillow \
     && pip3 install scikit-build \
-    && python3 -WORKDIR /pytorch
-m pip install setuptools==59.5.0 \
+    && python3 -WORKDIR /pytorch \
+    && python3 -m pip install setuptools==59.5.0 \
     && pip3 install -r requirements.txt \
     && python3 setup.py bdist_wheel \
     && cd ..
