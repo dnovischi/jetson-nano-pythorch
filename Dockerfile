@@ -27,13 +27,12 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 # ##################################################################################
 # Setup Nvidia CUDA for Jetson Nano
 # ##################################################################################
-ARG V_OS_MAJOR=20
-ARG V_OS_MINOR=04
-ARG V_OS=${V_OS_MAJOR}.${V_OS_MINOR}
-FROM arm64v8/ubuntu:20.04 as jetson-cuda
+ARG V_OS_BASE=arm64v8/ubuntu:20.04
+FROM ${V_OS_BASE} as jetson-cuda
 # Configuration Arguments
 ARG TIMEZONE=Europe/Bucharest
 ARG V_SOC=t210
@@ -84,7 +83,7 @@ RUN echo "[Builder] Installing CUDA Repository" \
 # Create PyTorch Download Layer
 # We do this seperately since else we need to keep rebuilding
 # ##################################################################################
-FROM arm64v8/ubuntu:20.04 as download
+FROM ${V_OS_BASE} as download
 # Set timezone
 ENV TZ=Europe/Bucharest
 RUN ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime && echo ${TZ} > /etc/timezone
@@ -201,17 +200,16 @@ RUN cd /vision \
     && cd ..
 
 # # Torchaudio Build
-# WORKDIR /audio
-# RUN cd /audio \
-#     && python3 -m pip install setuptools==59.5.0 \
-#     && python3 setup.py bdist_wheel \
-#     && cd ..
+WORKDIR ../audio
+RUN cd /audio \
+    && python3 -m pip install setuptools==59.5.0 \
+    && python3 setup.py bdist_wheel \
+    && cd ..
 
 # # ##################################################################################
 # # Prepare Artifact
 # # ##################################################################################
 FROM scratch as artifact
 COPY --from=build /pytorch/dist/* /
-# COPY --from=build /vision/dist/* /
-
-# COPY --from=build /audio/dist/* /
+COPY --from=build /vision/dist/* /
+COPY --from=build /audio/dist/* /
