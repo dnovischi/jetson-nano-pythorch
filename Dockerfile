@@ -58,9 +58,15 @@ RUN echo "$DPKG_STATUS" >> /var/lib/dpkg/status \
     && echo "[Builder] Installing Prerequisites" \
     && apt-get update \
     && apt-get upgrade -y \
-    && apt-get install -y --no-install-recommends ca-certificates software-properties-common curl gnupg2 apt-utils \
-    ninja-build git cmake libjpeg-dev libopenmpi-dev libomp-dev ccache\
+    && apt-get install -y --no-install-recommends ca-certificates software-properties-common gpg wget apt-transport-https curl gnupg2 apt-utils \
+    ninja-build git libjpeg-dev libopenmpi-dev libomp-dev ccache\
     libopenblas-dev libblas-dev libeigen3-dev python3-pip
+# Install latest cmake
+# TODO: Add support for ubuntu 18.04 (see https://apt.kitware.com/)
+RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null \
+    && echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ focal main' | tee /etc/apt/sources.list.d/kitware.list >/dev/null \
+    && apt-get update \
+    && apt-get install -y cmake
 
 RUN echo "[Builder] Installing CUDA Repository" \
     && curl https://repo.download.nvidia.com/jetson/jetson-ota-public.asc > /etc/apt/trusted.gpg.d/jetson-ota-public.asc \
@@ -118,7 +124,7 @@ ENV V_PYTHON=${V_PYTHON_MAJOR}.${V_PYTHON_MINOR}
 ENV DEBIAN_FRONTEND=noninteractive
 # Download Common Software
 RUN apt-get update \
-    && apt-get install -y clang clang-${V_CLANG} build-essential bash ca-certificates git wget cmake curl software-properties-common ffmpeg libsm6 libxext6 libffi-dev libssl-dev xz-utils zlib1g-dev liblzma-dev \
+    && apt-get install -y clang clang-${V_CLANG} build-essential bash ca-certificates git wget gpg apt-transport-https curl software-properties-common ffmpeg libsm6 libxext6 libffi-dev libssl-dev xz-utils zlib1g-dev liblzma-dev \
     && update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${V_CLANG} 100 \
     && update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${V_CLANG} 100 \
     && update-alternatives --set clang /usr/bin/clang-${V_CLANG} \
